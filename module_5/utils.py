@@ -15,7 +15,7 @@ def frontieres_de_decision(X, y, reseau, couleurs_classes, cmap, titre):
     with torch.no_grad():
         Z = reseau(
             torch.from_numpy(np.c_[xx.ravel(), yy.ravel()]).type(torch.FloatTensor)
-        ).detach()
+        ).cpu().detach()
         if Z.size(1) > 1:
             Z = torch.argmax(Z, dim=1)
         Z = Z.numpy()
@@ -59,12 +59,13 @@ def entrainer_reseau(
     cycles,
     fct_perte,
     optimiseur,
+    device,
     mini_batch_taille=None,
 ):
     train_loader = prep_dataloader(donnees_entrainement, mini_batch_taille)
     valid_loader = prep_dataloader(donnes_validation, mini_batch_taille)
 
-    _entrainer_reseau(reseau, train_loader, valid_loader, cycles, fct_perte, optimiseur)
+    _entrainer_reseau(reseau, train_loader, valid_loader, cycles, fct_perte, optimiseur, device)
 
 
 def prep_dataloader(donnees, mini_batch_taille):
@@ -88,7 +89,7 @@ def prep_dataloader(donnees, mini_batch_taille):
 
 
 def _entrainer_reseau(
-    reseau, train_loader, valid_loader, cycles, fct_perte, optimiseur
+    reseau, train_loader, valid_loader, cycles, fct_perte, optimiseur, device
 ):
     for i in range(cycles):
         perte_entrainement = 0
@@ -99,7 +100,10 @@ def _entrainer_reseau(
             optimiseur.zero_grad()
 
             echantillons = mini_batch[0]
+            echantillons = echantillons.to(device)
+
             verite = mini_batch[1]
+            verite = verite.to(device)
 
             predictions = reseau(echantillons)
 
@@ -123,9 +127,12 @@ def _entrainer_reseau(
             exactitude_valid = 0
             for mini_batch in valid_loader:
                 echantillons_valid = mini_batch[0]
+                echantillons_valid = echantillons_valid.to(device)
+
                 predictions_valid = reseau(echantillons_valid)
 
                 verite_valid = mini_batch[1]
+                verite_valid = verite_valid.to(device)
 
                 perte_valid += fct_perte(predictions_valid, verite_valid)
 
